@@ -1,8 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import Login from "@/views/Login.vue";
-import { inject, ref, type Ref } from "vue";
-import { getLoggedUser, type User } from "@/service/auth/auth.service";
-const router = createRouter({
+import { AuthService } from "@/service/auth/auth.bdl";
+  const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
@@ -28,7 +27,7 @@ const router = createRouter({
   ],
 });
 router.beforeEach((to, from, next) => { 
-  const user = getLoggedUser(); 
+  const user = AuthService.getLoggedUser(); 
   const isAuthenticated = user.value != null; 
 
   if (to.meta.requiresAuth && !isAuthenticated) {

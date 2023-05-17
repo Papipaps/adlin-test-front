@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import router from "@/router";
-import type { User } from "@/service/auth/auth.service";
+import type { User } from "@/service/auth/auth.bdl";
 import { inject, type Ref, ref, watchEffect, onMounted } from "vue";
 import List from "@/assets/icons/list.vue";
 import Menu_book from "@/assets/icons/menu_book.vue";

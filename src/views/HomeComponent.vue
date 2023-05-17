@@ -1,11 +1,22 @@
 <template>
   <TheNavigation />
+  <Card :styles="{ height: '300px' }" @close="hideModal" v-if="showModal">
+    <div class="booking-card">
+      <h2>Vous avez bien réservé la salle {{ selectedRoom?.name }} 👍</h2>
+      <br />
+      <p>
+        Pour rappel vous pouvez retrouver vos reservations dans l'onglet
+        <RouterLink to="/bookings">Réservations</RouterLink>
+      </p>
+      <CustomButton @click="hideModal" text="OK" />
+    </div>
+  </Card>
   <main class="wrapper">
     <div class="room-list">
       <form class="search-filters" @submit.prevent="filter">
         <div class="equipment-opts">
-          <CustomLabelVue text="Doit avoir" >
-            <input v-model="searchFilters.hasAllEquipments" type="checkbox"/>
+          <CustomLabelVue text="Doit avoir">
+            <input v-model="searchFilters.hasAllEquipments" type="checkbox" />
           </CustomLabelVue>
           <MultiSelect
             label="Equipement"
@@ -17,6 +28,7 @@
           />
         </div>
         <div class="calendar">
+          <p>Sélectionner une date de réservation</p>
           <Datepicker v-model="searchFilters.scheduledAt" />
         </div>
         <div class="opts">
@@ -27,10 +39,12 @@
             placeholder="Durée"
             class="time-opts w-full md:w-14rem"
           />
+          <p>Capacité</p>
           <Slider
             class="capacity-opts"
             v-model="searchFilters.capacity"
             :step="5"
+            :max="50"
           /><span>{{ searchFilters.capacity }}</span>
         </div>
         <button>filtrer</button>
@@ -50,8 +64,7 @@
           />
           <div class="room-info">
             <h3 class="room-name">
-              {{ room.name }}{{ " - " }}<span>0/{{ room.capacity }}</span
-              >>
+              {{ room.name }}{{ " • " }}<span>{{ room.capacity }} places</span>
             </h3>
             <p class="room-description">{{ room.description }}</p>
             <ul class="equipment-list">
@@ -65,8 +78,9 @@
     </div>
     <div class="room-details-wrapper">
       <RoomDetails
-        @book="filter"
+        @book="book"
         v-if="selectedRoom"
+        :seachFilters="searchFilters"
         :room="{
           ...selectedRoom,
           img: getImageUrl(String(selectedRoomImgIndex + 1)),
@@ -81,16 +95,19 @@
 import { onMounted, ref, watch } from "vue";
 import RoomDetails from "./RoomDetails.vue";
 import type { Room } from "@/interfaces/room.interface";
-import TheNavigation from "@/components/TheNavigation.vue";
+import TheNavigation from "@/components/molecule/TheNavigation.vue";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import Dropdown from "primevue/dropdown";
 import Slider from "primevue/slider";
 import MultiSelect from "primevue/multiselect";
 import CustomLabelVue from "@/components/atom/Label/CustomLabel.vue";
-import {getImageUrl} from '@/utils/utils'
+import CustomButton from "@/components/atom/Button/CustomButton.vue";
+import { getImageUrl } from "@/utils/utils";
+import { RoomService } from "@/service/room/room.bdl";
+import Card from "@/components/atom/Card/Card.vue";
 
-interface SearchFilters {
+export interface SearchFilters {
   equipments: string[];
   capacity: number;
   scheduledAt: Date;
@@ -103,13 +120,11 @@ const searchFilters = ref<SearchFilters>({
   choosenTime: 0.5,
   equipments: [],
   capacity: 0,
-  hasAllEquipments:false,
+  hasAllEquipments: false,
 });
 
-const equipmentOptions: string[] = [
-  "TV",
-  "Retro Projecteur"
-]; 
+const showModal = ref<boolean>(false);
+const equipmentOptions: string[] = ["TV", "Retro Projecteur"];
 const timeOptions = ref<{ value: number; name: string }[]>([
   { value: 0.5, name: "30 minutes" },
   { value: 1, name: "1 heure" },
@@ -117,7 +132,6 @@ const timeOptions = ref<{ value: number; name: string }[]>([
   { value: 3, name: "3 heures" },
 ]);
 const rooms = ref<Room[]>([]);
-const scheduledUntil = ref<Date>(new Date());
 const selectedRoom = ref<Room | null>(null);
 const selectedRoomImgIndex = ref<number>(0);
 
@@ -126,72 +140,38 @@ const selectRoom = (room: Room, index: number) => {
   selectedRoomImgIndex.value = index;
 };
 
+const book = () => {
+  filter();
+  showModal.value = true;
+};
 
-
-watch(["choosenTime", "scheduledAt"], () => {
-  scheduledUntil.value = new Date(
-    searchFilters.value.scheduledAt.getTime() +
-      searchFilters.value.choosenTime * 3_600_000
-  );
-});
+const hideModal = () => {
+  selectedRoom.value = null;
+  showModal.value = false;
+};
 
 onMounted(async () => {
-  const xhr = new XMLHttpRequest();
-  xhr.open(
-    "GET",
-    `http://localhost:3000/rooms/list?scheduledAt=${searchFilters.value.scheduledAt?.toISOString()}&scheduledUntil=${scheduledUntil.value.toISOString()}`,
-    true
-  );
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === XMLHttpRequest.DONE) {
-      if (xhr.status === 200) {
-        const responseData = JSON.parse(xhr.responseText);
-        rooms.value = responseData;
-      }
-    }
-  };
-  xhr.send();
+  RoomService.list({
+    scheduledAt: searchFilters.value.scheduledAt.toISOString(),
+    scheduledUntil: new Date(
+      searchFilters.value.scheduledAt.getTime() +
+        searchFilters.value.choosenTime * 3_600_000
+    )?.toISOString(),
+  }).then((res) => (rooms.value = res));
 });
 
 function filter() {
-  const { equipments, capacity, scheduledAt, choosenTime, hasAllEquipments } =
-    searchFilters.value;
-  const params = new URLSearchParams();
-
-  if (equipments && equipments.length > 0) {
-    params.append("equipments", equipments.join(","));
-  }
-
-  if (capacity) {
-    params.append("capacity", String(capacity));
-  }
-  
-  if (hasAllEquipments) { 
-    params.append("hasAll", String(hasAllEquipments));
-  }
-
-  if (scheduledAt && choosenTime) {
-    params.append("scheduledAt", scheduledAt.toISOString());
-    params.append(
-      "scheduledUntil",
-      new Date(scheduledAt.getTime() + choosenTime * 3_600_000)?.toISOString()
-    );
-  } 
-
-  const url = `http://localhost:3000/rooms/list?${params.toString()}`;
-
-  const xhr = new XMLHttpRequest();
-  xhr.open("GET", url, true);
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === XMLHttpRequest.DONE) {
-      if (xhr.status === 200) {
-        const responseData = JSON.parse(xhr.responseText);
-        rooms.value = responseData;
-        selectedRoom.value = null;
-      }
-    }
+  const { scheduledAt, choosenTime } = searchFilters.value;
+  const strAt = scheduledAt.toISOString();
+  const strUntil = new Date(
+    scheduledAt.getTime() + choosenTime * 3_600_000
+  )?.toISOString();
+  const reqParams = {
+    ...searchFilters.value,
+    scheduledUntil: strUntil,
+    scheduledAt: strAt,
   };
-  xhr.send();
+  RoomService.list(reqParams).then((res) => (rooms.value = res));
 }
 </script>
 
@@ -207,6 +187,13 @@ function filter() {
     max-height: 70%;
     box-shadow: none;
   }
+}
+
+.booking-card button {
+  margin: 20px 0;
+}
+.booking-card {
+  text-align: center;
 }
 .wrapper {
   display: flex;
@@ -225,13 +212,13 @@ function filter() {
 .search-filters > div {
   padding: 20px;
 }
-.search-filters { 
+.search-filters {
   background: white;
   display: flex;
   width: 100%;
   align-items: center;
   justify-content: space-between;
-  height: 100px;
+  height: 150px;
   /* gap: 10px; */
   border-radius: 15px;
   box-shadow: var(--box-shadow);
@@ -254,9 +241,15 @@ function filter() {
   min-width: 250px;
 }
 
+.opts > * {
+  margin-bottom: 5px;
+}
 .opts {
   width: 100%;
   flex: 1;
+}
+.equipment-opts :first-child {
+  margin: 0 10px;
 }
 .equipment-opts {
   max-width: 350px;

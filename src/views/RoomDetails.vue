@@ -22,11 +22,11 @@
                   {{ error.message }}
                 </p></span
               >
-              <Datepicker v-model="scheduledAt" />
+              <Datepicker v-model="seachFilters.scheduledAt" />
             </div>
 
             <div class="room-info">
-              <p>Date sélectionnée : {{ getDateAsString(scheduledAt) }}</p>
+              <p>Date sélectionnée : {{ getDateAsString(seachFilters.scheduledAt) }}</p>
               <p>{{ displayDuration() }}</p>
               <br />
               <select v-model="scheduledUntil">
@@ -56,22 +56,26 @@ import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { getDateAsString } from "@/utils/utils";
 import type { IError } from "@/interfaces/error.interface";
+import { BookingService } from "@/service/booking/booking.bdl";
+import type { SearchFilters } from "./HomeComponent.vue";
+
+interface Props {
+  room: Room;
+  seachFilters: SearchFilters;
+}
 
 const props = defineProps<Props>();
 const emit = defineEmits(["book"]);
 
 const room = toRef(props, "room");
+const seachFilters = toRef(props, "seachFilters");
 const errors = ref<IError[]>([]);
-const scheduledAt = ref<Date>(new Date());
 const scheduledUntil = ref<number>(0.5);
 
 const HOUR_IN_MILLI: number = 3_600_000;
-interface Props {
-  room: Room;
-}
 
-watch([scheduledAt], () => {
-  if (scheduledAt.value.getTime() < new Date().getTime()) {
+watch([seachFilters.value.scheduledAt], () => {
+  if (seachFilters.value.scheduledAt.getTime() < new Date().getTime()) {
     errors.value = [
       {
         message: "La date ne peut pas etre antérieur à celle d'aujourd'hui",
@@ -83,14 +87,15 @@ watch([scheduledAt], () => {
 });
 
 function displayDuration() {
-  const de: Date = scheduledAt.value;
+  const de: Date = seachFilters.value.scheduledAt;
   const a: Date = new Date(de.getTime() + scheduledUntil.value * HOUR_IN_MILLI);
   return `De ${de.getHours()}h${de.getMinutes()} à ${a.getHours()}h${a.getMinutes()}m`;
 }
 function handleClick() {
   const storedUser = localStorage.getItem("mock-credentials");
   const until = new Date(
-    scheduledAt.value.getTime() + scheduledUntil.value * HOUR_IN_MILLI
+    seachFilters.value.scheduledAt.getTime() +
+      scheduledUntil.value * HOUR_IN_MILLI
   );
 
   if (storedUser && errors.value.length === 0) {
@@ -98,24 +103,14 @@ function handleClick() {
     const data = {
       roomId: room.value.id,
       userId: user.id,
-      scheduledAt: scheduledAt.value.toISOString(),
+      scheduledAt: seachFilters.value.scheduledAt.toISOString(),
       scheduledUntil: until.toISOString(),
     };
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "http://localhost:3000/booking/book", true);
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === XMLHttpRequest.DONE) {
-        if (xhr.status === 200) {
-          emit("book");
-        } else {
-          const errorData = JSON.parse(xhr.responseText);
-          errors.value.push(errorData);
-        }
-      }
-    };
-    xhr.send(JSON.stringify(data));
+    BookingService.book(data)
+      .then(() => emit("book"))
+      .catch((err) => {
+        errors.value.push(err);
+      });
   }
 }
 </script>

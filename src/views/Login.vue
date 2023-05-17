@@ -6,35 +6,47 @@
         <InputTextVue v-model="name" placeholder="Entrez un nom"></InputTextVue>
         <CustomButton text="GO"></CustomButton>
       </form>
+      <p class="error bold" v-show="showError">{{ error }}</p>
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
 import InputTextVue from "@/components/atom/InputText/InputText.vue";
-import { inject, ref, type Ref } from "vue";
+import { ref } from "vue"; 
+import { AuthService } from "@/service/auth/auth.bdl";
+import CustomButton from "@/components/atom/Button/CustomButton.vue";
 import router from "@/router";
-import type { User } from "@/service/auth/auth.service";
-import CustomButton from "@/components/atom/Button/FormButton/CustomButton.vue";
 
 const name = ref<string>("");
-const user = inject("user") as Ref<User>;  
+const showError = ref<boolean>(false);
+const error = "Vos identifiants doivent faire entre 2 et 32 caractères";
 function handleSubmit() {
-  const newUser = { name: name.value, id: crypto.randomUUID() };
-  user.value = newUser;
-  localStorage.setItem("mock-credentials", JSON.stringify(newUser));
-  router.push("/rooms");
+  if (name.value.length <= 2) {
+    showError.value = true;
+  } else {
+    AuthService.check({ name: name.value }).then((res) => {
+      showError.value = !res.success;
+      if (res.success) { 
+        const newUser = { name: name.value, id: res.id };
+        localStorage.setItem("mock-credentials", JSON.stringify(newUser));
+        router.push("/rooms")
+      }
+    });
+  }
 }
 </script>
 
 <style scoped>
 .logincard {
   position: absolute;
+
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  background: white;
   margin: 0 auto;
-  padding: 15px;
+  padding: 30px 15px;
   border-radius: 5px;
   width: fit-content;
   box-shadow: 5px 5px 19px rgba(0, 0, 0, 0.1);

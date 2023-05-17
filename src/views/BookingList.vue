@@ -2,7 +2,7 @@
   <TheNavigation />
   <CustomButton
     class="cancel-btn"
-    @click="deleteReservation"
+    @click="cancelReservation"
     :styles="{ background: 'red' }"
     text="Annuler les réservations"
     :disabled="selectedBookings.length === 0"
@@ -11,20 +11,27 @@
     <div class="reservation-header">
       <h1>Mes Réservations</h1>
       <Dropdown
+        @change="page = 0"
         v-model="state"
         :options="[
           { name: 'TOUS', value: '' },
           { name: 'En cours', value: 'ONGOING' },
-          { name: 'Annulée', value: 'CLOSED'  },
+          { name: 'Annulée', value: 'CLOSED' },
         ]"
         option-value="value"
         option-label="name"
         placeholder="État"
         class="time-opts w-full md:w-14rem"
       />
+      <Paginator
+        v-model:first="page"
+        :rows="1"
+        :totalRecords="totalPage"
+      ></Paginator>
     </div>
     <div class="reservation-list">
       <div
+        v-if="bookings && bookings.length > 0"
         v-for="booking in bookings"
         :key="booking.id"
         class="reservation-item"
@@ -52,7 +59,7 @@
               v-model="selectedBookings"
               :value="booking"
             />
-            <i class="pi pi-trash" @click="deleteReservation(booking)"></i>
+            <i class="pi pi-trash" @click="cancelReservation(booking)"></i>
           </div>
           <div v-else>
             <p class="bold error">
@@ -61,72 +68,50 @@
           </div>
         </div>
       </div>
+      <p v-else>Aucune salle trouvée</p>
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
 import type { Booking } from "@/interfaces/booking.interface";
-import type { User } from "@/service/auth/auth.service";
+import type { User } from "@/service/auth/auth.bdl";
 import { ref, inject, type Ref, watchEffect } from "vue";
 import { getImageUrl, getDateAsString } from "@/utils/utils";
-import TheNavigation from "@/components/TheNavigation.vue";
-import CustomButton from "@/components/atom/Button/FormButton/CustomButton.vue";
+import TheNavigation from "@/components/molecule/TheNavigation.vue";
+import CustomButton from "@/components/atom/Button/CustomButton.vue";
 import Dropdown from "primevue/dropdown";
-const xhr = new XMLHttpRequest();
+import { BookingService } from "@/service/booking/booking.bdl";
+import Paginator from "primevue/paginator";
 const user = inject("user") as Ref<User>;
 const selectedBookings = ref<Booking[]>([]);
 
 const state = ref<string>("ONGOING");
 const bookings = ref<Booking[]>();
 
+const page = ref<number>(0);
+const totalPage = ref<number>(1);
+
 const fetchReservations = () => {
-  xhr.open(
-    "GET",
-    `http://localhost:3000/booking/list?userId=${user.value?.id}&state=${state.value}`,
-    true
-  );
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === XMLHttpRequest.DONE) {
-      if (xhr.status === 200) {
-        const responseData = JSON.parse(xhr.responseText);
-        console.log(responseData);
-        bookings.value = responseData;
-        bookings.value?.map(
-          (booking) => (
-            (booking.scheduledAt = new Date(booking.scheduledAt)),
-            (booking.scheduledUntil = new Date(booking.scheduledUntil)),
-            (booking.updatedAt = new Date(booking.updatedAt))
-          )
-        );
-      }
-    }
-  };
-  xhr.send();
+  BookingService.list({
+    userId: user.value.id,
+    state: state.value,
+    page: page.value,
+  })
+    .then((res) => {
+      bookings.value = res.bookings;
+      totalPage.value = Math.ceil(res.count / 6);
+    })
+    .catch(() => (bookings.value = []));
 };
-const deleteReservation = (booking: Booking) => {
+const cancelReservation = (booking: Booking) => {
   const ids = booking.id
     ? [booking.id]
     : selectedBookings.value.map((b) => b.id);
-
-  if (ids.length > 0) {
-    xhr.open(
-      "DELETE",
-      `http://localhost:3000/booking/cancel?userId=${user.value?.id}&ids=${ids}`,
-      true
+   if (ids.length > 0) {
+    BookingService.cancel({ ids: ids, userId: user.value.id }).then(() =>
+      fetchReservations()
     );
-    xhr.setRequestHeader("Content-type", "application/json; charset=UTF-8");
-
-    xhr.send(JSON.stringify({ ids: ids, userId: user.value.id }));
-
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState === XMLHttpRequest.DONE) {
-        if (xhr.status === 200) {
-          fetchReservations();
-          console.log(JSON.parse(xhr.responseText));
-        }
-      }
-    };
   }
 };
 
@@ -140,7 +125,7 @@ function isClosed(booking: Booking) {
 <style scoped>
 .wrapper {
   background: white;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .cancel-btn {
@@ -152,7 +137,7 @@ function isClosed(booking: Booking) {
   padding: 20px;
 }
 
-.reservation-header{
+.reservation-header {
   padding-top: 50px;
   text-align: center;
   width: 50%;
@@ -162,6 +147,7 @@ function isClosed(booking: Booking) {
 }
 .reservation-list {
   /* Styles pour la liste des réservations */
+  text-align: center;
   padding: 20px;
   list-style: none;
 }
