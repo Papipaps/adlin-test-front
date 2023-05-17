@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import type { Booking } from "@/interfaces/booking.interface";
 import type { User } from "@/service/auth/auth.service";
-import { ref, onMounted, inject, type Ref, watchEffect, watch } from "vue";
+import { ref, inject, type Ref, watchEffect } from "vue";
 import { getImageUrl, getDateAsString } from "@/utils/utils";
 import TheNavigation from "@/components/TheNavigation.vue";
 import CustomButton from "@/components/atom/Button/FormButton/CustomButton.vue";
@@ -131,8 +131,6 @@ const deleteReservation = (booking: Booking) => {
 };
 
 watchEffect(() => ((selectedBookings.value = []), fetchReservations()));
-
-// onMounted(() => fetchReservations());
 
 function isClosed(booking: Booking) {
   return booking.state === "CLOSED";

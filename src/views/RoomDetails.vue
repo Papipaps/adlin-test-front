@@ -18,7 +18,9 @@
           <section>
             <div class="calendar">
               <span v-show="errors.length > 0"
-                ><p v-for="error in errors">{{ error }}</p></span
+                ><p class="error bold" v-for="error in errors">
+                  {{ error.message }}
+                </p></span
               >
               <Datepicker v-model="scheduledAt" />
             </div>
@@ -52,13 +54,14 @@ import { ref, toRef, watch } from "vue";
 import type { Room } from "@/interfaces/room.interface";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
-import {getDateAsString} from '@/utils/utils'
+import { getDateAsString } from "@/utils/utils";
+import type { IError } from "@/interfaces/error.interface";
 
 const props = defineProps<Props>();
 const emit = defineEmits(["book"]);
 
 const room = toRef(props, "room");
-const errors = ref<String[]>([]);
+const errors = ref<IError[]>([]);
 const scheduledAt = ref<Date>(new Date());
 const scheduledUntil = ref<number>(0.5);
 
@@ -69,13 +72,15 @@ interface Props {
 
 watch([scheduledAt], () => {
   if (scheduledAt.value.getTime() < new Date().getTime()) {
-    errors.value.push("La date ne peut pas etre antérieur a aujourd'hui");
+    errors.value = [
+      {
+        message: "La date ne peut pas etre antérieur à celle d'aujourd'hui",
+      },
+    ];
   } else {
     errors.value = [];
   }
 });
-
-
 
 function displayDuration() {
   const de: Date = scheduledAt.value;
@@ -91,7 +96,6 @@ function handleClick() {
   if (storedUser && errors.value.length === 0) {
     const user = JSON.parse(storedUser);
     const data = {
-      id: "",
       roomId: room.value.id,
       userId: user.id,
       scheduledAt: scheduledAt.value.toISOString(),
@@ -117,7 +121,7 @@ function handleClick() {
 </script>
 
 <style scoped>
-.wrapper { 
+.wrapper {
   height: 500px;
   box-shadow: var(--box-shadow);
   border-radius: 15px;
@@ -153,13 +157,13 @@ function handleClick() {
   height: 80px;
 }
 .title {
-  flex : 2;
+  flex: 2;
   font-size: 24px;
-  font-weight: bold; 
+  font-weight: bold;
 }
 
-.info-header button{
-  flex : 1;
+.info-header button {
+  flex: 1;
 }
 
 .description {
