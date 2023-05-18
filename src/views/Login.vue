@@ -13,11 +13,11 @@
 
 <script setup lang="ts">
 import InputTextVue from "@/components/atom/InputText/InputText.vue";
-import { ref } from "vue"; 
-import { AuthService } from "@/service/auth/auth.bdl";
+import { inject, ref } from "vue";
+import { AuthService, type User } from "@/service/auth/auth.bdl";
 import CustomButton from "@/components/atom/Button/CustomButton.vue";
-import router from "@/router";
-
+import router from "@/router/router";
+const updateUser = inject("updateUser") as (newUser: User) => void;
 const name = ref<string>("");
 const showError = ref<boolean>(false);
 const error = "Vos identifiants doivent faire entre 2 et 32 caractères";
@@ -27,10 +27,15 @@ function handleSubmit() {
   } else {
     AuthService.check({ name: name.value }).then((res) => {
       showError.value = !res.success;
-      if (res.success) { 
-        const newUser = { name: name.value, id: res.id };
+      if (res.success) {
+        const newUser: User = {
+          name: name.value,
+          id: res.id,
+          token: res.token,
+        };
         localStorage.setItem("mock-credentials", JSON.stringify(newUser));
-        router.push("/rooms")
+        updateUser(newUser);
+        router.push("/rooms");
       }
     });
   }

@@ -6,8 +6,21 @@
 </template>
 
 <script setup lang="ts">
- import { AuthService } from "@/service/auth/auth.bdl";
-import { provide } from "vue";
-const user =  AuthService.getLoggedUser(); 
-provide("user", user);  
+import { type User } from "@/service/auth/auth.bdl";
+import { provide, ref, onBeforeMount } from "vue";
+
+const storedUser = localStorage.getItem("mock-credentials");
+const user = ref<User | null>(null);
+
+onBeforeMount(() => {
+  if (storedUser) {
+    user.value = JSON.parse(storedUser);
+  }
+});
+provide("user", user);
+
+function updateUser(newUser: User) {
+  user.value = newUser;
+}
+provide("updateUser", updateUser);
 </script>

@@ -36,6 +36,7 @@
             v-model="searchFilters.choosenTime"
             :options="timeOptions"
             optionLabel="name"
+            optionValue="value"
             placeholder="Durée"
             class="time-opts w-full md:w-14rem"
           />
@@ -80,7 +81,8 @@
       <RoomDetails
         @book="book"
         v-if="selectedRoom"
-        :seachFilters="searchFilters"
+        :timeOptions="timeOptions"
+        :searchFilters="searchFilters"
         :room="{
           ...selectedRoom,
           img: getImageUrl(String(selectedRoomImgIndex + 1)),
@@ -161,6 +163,7 @@ onMounted(async () => {
 });
 
 function filter() {
+  console.log(searchFilters.value)
   const { scheduledAt, choosenTime } = searchFilters.value;
   const strAt = scheduledAt.toISOString();
   const strUntil = new Date(

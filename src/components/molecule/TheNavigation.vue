@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import router from "@/router";
+import router from "@/router/router";
 import type { User } from "@/service/auth/auth.bdl";
 import { inject, type Ref, ref, watchEffect, onMounted } from "vue";
 import List from "@/assets/icons/list.vue";

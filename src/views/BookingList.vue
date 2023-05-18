@@ -75,8 +75,8 @@
 
 <script setup lang="ts">
 import type { Booking } from "@/interfaces/booking.interface";
-import type { User } from "@/service/auth/auth.bdl";
-import { ref, inject, type Ref, watchEffect } from "vue";
+import { type User } from "@/service/auth/auth.bdl";
+import { ref, inject, type Ref, watchEffect, onMounted } from "vue";
 import { getImageUrl, getDateAsString } from "@/utils/utils";
 import TheNavigation from "@/components/molecule/TheNavigation.vue";
 import CustomButton from "@/components/atom/Button/CustomButton.vue";
@@ -108,12 +108,16 @@ const cancelReservation = (booking: Booking) => {
   const ids = booking.id
     ? [booking.id]
     : selectedBookings.value.map((b) => b.id);
-   if (ids.length > 0) {
+  if (ids.length > 0) {
     BookingService.cancel({ ids: ids, userId: user.value.id }).then(() =>
       fetchReservations()
     );
   }
 };
+
+onMounted(() => {
+  
+});
 
 watchEffect(() => ((selectedBookings.value = []), fetchReservations()));
 

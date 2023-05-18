@@ -22,18 +22,24 @@
                   {{ error.message }}
                 </p></span
               >
-              <Datepicker v-model="seachFilters.scheduledAt" />
+              <Datepicker v-model="searchFilters.scheduledAt" />
             </div>
 
             <div class="room-info">
-              <p>Date sélectionnée : {{ getDateAsString(seachFilters.scheduledAt) }}</p>
+              <p>
+                Date sélectionnée :
+                {{ getDateAsString(searchFilters.scheduledAt) }}
+              </p>
               <p>{{ displayDuration() }}</p>
               <br />
-              <select v-model="scheduledUntil">
-                <option value="0.5">30 minutes</option>
-                <option value="1">1 heure</option>
-                <option value="2">2 heure</option>
-              </select>
+              <Dropdown
+                v-model="searchFilters.choosenTime"
+                :options="timeOptions"
+                optionLabel="name"
+                optionValue="value"
+                placeholder="Durée"
+                class="time-opts w-full md:w-14rem"
+              />
               <br />
               <p>Equipements de la salle</p>
               <ul class="equipment-list">
@@ -58,24 +64,26 @@ import { getDateAsString } from "@/utils/utils";
 import type { IError } from "@/interfaces/error.interface";
 import { BookingService } from "@/service/booking/booking.bdl";
 import type { SearchFilters } from "./HomeComponent.vue";
+import Dropdown from "primevue/dropdown";
 
 interface Props {
   room: Room;
-  seachFilters: SearchFilters;
+  searchFilters: SearchFilters;
+  timeOptions: { value: number; name: string }[];
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits(["book"]);
 
 const room = toRef(props, "room");
-const seachFilters = toRef(props, "seachFilters");
+const searchFilters = toRef(props, "searchFilters");
+const timeOptions = toRef(props, "timeOptions");
 const errors = ref<IError[]>([]);
-const scheduledUntil = ref<number>(0.5);
 
 const HOUR_IN_MILLI: number = 3_600_000;
 
-watch([seachFilters.value.scheduledAt], () => {
-  if (seachFilters.value.scheduledAt.getTime() < new Date().getTime()) {
+watch([searchFilters.value.scheduledAt], () => {
+  if (searchFilters.value.scheduledAt.getTime() < new Date().getTime()) {
     errors.value = [
       {
         message: "La date ne peut pas etre antérieur à celle d'aujourd'hui",
@@ -87,15 +95,17 @@ watch([seachFilters.value.scheduledAt], () => {
 });
 
 function displayDuration() {
-  const de: Date = seachFilters.value.scheduledAt;
-  const a: Date = new Date(de.getTime() + scheduledUntil.value * HOUR_IN_MILLI);
+  const de: Date = searchFilters.value.scheduledAt;
+  const a: Date = new Date(
+    de.getTime() + searchFilters.value.choosenTime * HOUR_IN_MILLI
+  );
   return `De ${de.getHours()}h${de.getMinutes()} à ${a.getHours()}h${a.getMinutes()}m`;
 }
 function handleClick() {
   const storedUser = localStorage.getItem("mock-credentials");
   const until = new Date(
-    seachFilters.value.scheduledAt.getTime() +
-      scheduledUntil.value * HOUR_IN_MILLI
+    searchFilters.value.scheduledAt.getTime() +
+      searchFilters.value.choosenTime * HOUR_IN_MILLI
   );
 
   if (storedUser && errors.value.length === 0) {
@@ -103,7 +113,7 @@ function handleClick() {
     const data = {
       roomId: room.value.id,
       userId: user.id,
-      scheduledAt: seachFilters.value.scheduledAt.toISOString(),
+      scheduledAt: searchFilters.value.scheduledAt.toISOString(),
       scheduledUntil: until.toISOString(),
     };
     BookingService.book(data)

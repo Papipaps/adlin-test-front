@@ -1,4 +1,5 @@
 import type { Room } from "@/interfaces/room.interface";
+import { AuthService } from "../auth/auth.bdl";
 
 interface RoomData {
   roomId?: string;
@@ -9,6 +10,8 @@ interface RoomData {
   capacity?: number;
   hasAllEquipments?: boolean;
 }
+
+const user = AuthService.getLoggedUser();
 
 async function list(data: RoomData): Promise<Room[]> {
   const params = new URLSearchParams();
@@ -46,6 +49,7 @@ async function list(data: RoomData): Promise<Room[]> {
       `http://localhost:3000/rooms/list?${params.toString()}`,
       true
     );
+    xhr.setRequestHeader("Token", `${user.value?.token}`);
     xhr.onreadystatechange = function () {
       if (xhr.readyState === XMLHttpRequest.DONE) {
         if (xhr.status === 200) {
