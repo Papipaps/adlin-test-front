@@ -5,7 +5,7 @@
       <h2>Vous avez bien réservé la salle {{ selectedRoom?.name }} 👍</h2>
       <br />
       <p>
-        Pour rappel vous pouvez retrouver vos reservations dans l'onglet
+        Pour rappel vous pouvez retrouver vos réservations dans l'onglet
         <RouterLink to="/bookings">Réservations</RouterLink>
       </p>
       <CustomButton @click="hideModal" text="OK" />
@@ -237,7 +237,7 @@ function filter() {
   background: var(--accent-color);
   padding: 0 10px;
   border-radius: 0px 15px 15px 0px;
-  text-transform: uppercase;
+  text-transform: uppercase; 
 }
 .calendar {
   flex: 1;
